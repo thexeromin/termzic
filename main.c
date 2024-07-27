@@ -2,10 +2,14 @@
 #include <string.h>
 #include <ncurses.h>
 #include <menu.h>
+#include <dirent.h>
+
+#include "library.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define CTRLD   4
 
+node_t* songs_list = NULL;
 char *choices[] = {
     "Choice 1",
     "Choice 2",
@@ -36,13 +40,22 @@ void print_in_middle(
     chtype color
 );
 
-int main() {
+int main(int argc, char* argv[]) {
     ITEM** my_items;
 	int c;				
 	MENU* my_menu;
     WINDOW* my_menu_win;
     int n_choices, i;
     int width, height, starty, startx;
+    DIR *d;
+    struct dirent *dir;
+
+    if(argc < 2) {
+        printf("directory argument missing\n");
+        exit(1);
+    }
+
+    d = opendir(argv[1]);
 
     /* Initialize curses */
     initscr();
@@ -58,12 +71,30 @@ int main() {
     startx = (COLS - width) / 2;
     starty = 1;
 
-	/* Create items */
-    n_choices = ARRAY_SIZE(choices);
-    my_items = (ITEM**) calloc(n_choices, sizeof(ITEM*));
-    for(i = 0; i < n_choices; ++i) {
-        my_items[i] = new_item(" ", choices[i]);
+    /* Initialize songs */
+    if(d) {
+        while((dir = readdir(d)) != NULL) {
+            if (strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
+                push(&songs_list, dir->d_name);
+            }
+        }
+        closedir(d);
     }
+
+	/* Create items */
+    node_t* curr_node = songs_list;
+    n_choices = list_length(curr_node);
+    my_items = (ITEM**) calloc(n_choices, sizeof(ITEM*));
+
+    // mvprintw((LINES - 4), 2, "%d\n", n_choices);
+    for(int i = 0; curr_node != NULL; curr_node = curr_node->next, i++) {
+        my_items[i] = new_item(" ", curr_node->data);
+        // mvprintw((LINES - 2) + i, 2, "%s\n", curr_node->data);
+    }
+    /* TODO: remove */
+    /* for(i = 0; i < n_choices; ++i) {
+        my_items[i] = new_item(" ", choices[i]);
+    } */
 
 	/* Crate menu */
 	my_menu = new_menu((ITEM**) my_items);
