@@ -1,10 +1,15 @@
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <string.h>
 #include <ncurses.h>
 #include <menu.h>
+#include <linux/limits.h>
+#include <limits.h>
 #include <dirent.h>
 
 #include "library.h"
+#define MINIAUDIO_IMPLEMENTATION
+#include "./miniaudio.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define CTRLD   4
@@ -19,8 +24,15 @@ void print_in_middle(
     char* str,
     chtype color
 );
+void data_callback(
+    ma_device* pDevice,
+    void* pOutput,
+    const void* pInput,
+    ma_uint32 frameCount
+);
 
 int main(int argc, char* argv[]) {
+    // ncurses vars
     ITEM** my_items;
 	int c;				
 	MENU* my_menu;
@@ -29,6 +41,7 @@ int main(int argc, char* argv[]) {
     int width, height, starty, startx;
     DIR *d;
     struct dirent *dir;
+    int currently_playing_song_index = -1;
 
     if(argc < 2) {
         printf("directory argument missing\n");
@@ -51,7 +64,7 @@ int main(int argc, char* argv[]) {
     startx = (COLS - width) / 2;
     starty = 1;
 
-    /* Initialize songs */
+    // Initialize songs
     if(d) {
         while((dir = readdir(d)) != NULL) {
             if (strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
@@ -61,13 +74,42 @@ int main(int argc, char* argv[]) {
         closedir(d);
     }
 
-	/* Create items */
+
+	// Create items
     node_t* curr_node = songs_list;
     songs_list_len = list_length(curr_node);
     my_items = (ITEM**) calloc(songs_list_len + 1, sizeof(ITEM*));
 
+    // miniaudio vars
+    ma_result result;
+    ma_decoder decoder[songs_list_len];
+    ma_device_config deviceConfig;
+    ma_device device[songs_list_len];
+    char buf[PATH_MAX + 1];
+
     for(i = 0; curr_node != NULL; curr_node = curr_node->next, i++) {
         my_items[i] = new_item(" ", curr_node->data);
+        
+        // initialize decoder
+        snprintf(buf, sizeof(buf), "%s%s", argv[1], curr_node->data);
+        result = ma_decoder_init_file(buf, NULL, &decoder[i]);
+        if (result != MA_SUCCESS) {
+            printf("Could not load file: %s\n", buf);
+            return -2;
+        }
+
+        deviceConfig = ma_device_config_init(ma_device_type_playback);
+        deviceConfig.playback.format   = decoder[i].outputFormat;
+        deviceConfig.playback.channels = decoder[i].outputChannels;
+        deviceConfig.sampleRate        = decoder[i].outputSampleRate;
+        deviceConfig.dataCallback      = data_callback;
+        deviceConfig.pUserData         = &decoder[i];
+
+        if (ma_device_init(NULL, &deviceConfig, &device[i]) != MA_SUCCESS) {
+            printf("Failed to open playback device.\n");
+            ma_decoder_uninit(&decoder[i]);
+            return -3;
+        }
     }
     // terminate my_items array with null
     my_items[i] = (ITEM*) NULL;
@@ -127,6 +169,22 @@ int main(int argc, char* argv[]) {
                         item_description(curr_item));
                 refresh();
 				pos_menu_cursor(my_menu);
+
+                // stop playing song
+                if(currently_playing_song_index > -1) {
+                    ma_device_stop(&device[currently_playing_song_index]);
+                }
+
+                // play audio
+                currently_playing_song_index = get_index_of_node(
+                    songs_list, item_description(curr_item)
+                );
+                if(ma_device_start(&device[currently_playing_song_index]) != MA_SUCCESS) {
+                    printf("Failed to start playback device.\n");
+                    ma_device_uninit(&device[0]);
+                    ma_decoder_uninit(&decoder[0]);
+                    return -4;
+                }
 				break;
 		}
         wrefresh(my_menu_win);
@@ -137,6 +195,8 @@ int main(int argc, char* argv[]) {
     free_menu(my_menu);
     for(i = 0; i < songs_list_len; ++i) {
         free_item(my_items[i]);
+        ma_device_uninit(&device[i]);
+        ma_decoder_uninit(&decoder[i]);
     }
     free(my_items);
 	endwin();
@@ -170,4 +230,20 @@ void print_in_middle(
 	mvwprintw(win, y, x, "%s", str);
 	wattroff(win, color);
 	refresh();
+}
+
+void data_callback(
+    ma_device* pDevice,
+    void* pOutput,
+    const void* pInput,
+    ma_uint32 frameCount
+) {
+    ma_decoder* pDecoder = (ma_decoder*)pDevice->pUserData;
+    if(pDecoder == NULL) {
+        return;
+    }
+
+    ma_decoder_read_pcm_frames(pDecoder, pOutput, frameCount, NULL);
+
+    (void)pInput;
 }

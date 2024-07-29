@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11
-LDFLAGS = -lncurses -lmenu
+LDFLAGS = -lncurses -lmenu -lm
 
 SRCS = main.c library.c
 OBJS = $(SRCS:.c=.o)

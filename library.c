@@ -59,3 +59,16 @@ int list_length(node_t* head) {
     }
     return length;
 }
+
+int get_index_of_node(node_t* head, const char* target) {
+    int index = 0;
+    while (head != NULL) {
+        if (strcmp(head->data, target) == 0) {
+            return index;
+        }
+        head = head->next;
+        index++;
+    }
+    return -1; // Not found
+}
+
