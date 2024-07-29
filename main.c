@@ -64,13 +64,13 @@ int main(int argc, char* argv[]) {
 	/* Create items */
     node_t* curr_node = songs_list;
     songs_list_len = list_length(curr_node);
-    my_items = (ITEM**) calloc(songs_list_len, sizeof(ITEM*));
+    my_items = (ITEM**) calloc(songs_list_len + 1, sizeof(ITEM*));
 
     for(i = 0; curr_node != NULL; curr_node = curr_node->next, i++) {
         my_items[i] = new_item(" ", curr_node->data);
     }
     // terminate my_items array with null
-    my_items[i] = new_item((char *)NULL, curr_node->data);
+    my_items[i] = (ITEM*) NULL;
 
 	/* Crate menu */
 	my_menu = new_menu((ITEM**) my_items);
@@ -107,11 +107,26 @@ int main(int argc, char* argv[]) {
 			case KEY_UP:
 				menu_driver(my_menu, REQ_UP_ITEM);
 				break;
+            case 'j':
+				menu_driver(my_menu, REQ_DOWN_ITEM);
+				break;
+			case 'k':
+				menu_driver(my_menu, REQ_UP_ITEM);
+				break;
 			case KEY_NPAGE:
 				menu_driver(my_menu, REQ_SCR_DPAGE);
 				break;
 			case KEY_PPAGE:
 				menu_driver(my_menu, REQ_SCR_UPAGE);
+				break;
+            case 10:  // Enter
+                move(LINES - 2, startx);
+				clrtoeol();
+                ITEM* curr_item = current_item(my_menu);
+                mvprintw(LINES - 2, startx, "Playing: %s",
+                        item_description(curr_item));
+                refresh();
+				pos_menu_cursor(my_menu);
 				break;
 		}
         wrefresh(my_menu_win);
@@ -123,6 +138,7 @@ int main(int argc, char* argv[]) {
     for(i = 0; i < songs_list_len; ++i) {
         free_item(my_items[i]);
     }
+    free(my_items);
 	endwin();
 }
 
