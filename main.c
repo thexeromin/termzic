@@ -10,26 +10,6 @@
 #define CTRLD   4
 
 node_t* songs_list = NULL;
-char *choices[] = {
-    "Choice 1",
-    "Choice 2",
-    "Choice 3",
-    "Choice 4",
-    "Choice 5",
-    "Choice 6",
-    "Choice 7",
-    "Choice 8",
-    "Choice 9",
-    "Choice 10",
-    "Choice 11",
-    "Choice 12",
-    "Choice 13",
-    "Choice 14",
-    "Choice 15",
-    "Choice 16",
-    "Choice 17",
-    "Choice 18",
-};
 
 void print_in_middle(
     WINDOW* win,
@@ -45,7 +25,7 @@ int main(int argc, char* argv[]) {
 	int c;				
 	MENU* my_menu;
     WINDOW* my_menu_win;
-    int n_choices, i;
+    int songs_list_len, i;
     int width, height, starty, startx;
     DIR *d;
     struct dirent *dir;
@@ -83,18 +63,14 @@ int main(int argc, char* argv[]) {
 
 	/* Create items */
     node_t* curr_node = songs_list;
-    n_choices = list_length(curr_node);
-    my_items = (ITEM**) calloc(n_choices, sizeof(ITEM*));
+    songs_list_len = list_length(curr_node);
+    my_items = (ITEM**) calloc(songs_list_len, sizeof(ITEM*));
 
-    // mvprintw((LINES - 4), 2, "%d\n", n_choices);
-    for(int i = 0; curr_node != NULL; curr_node = curr_node->next, i++) {
+    for(i = 0; curr_node != NULL; curr_node = curr_node->next, i++) {
         my_items[i] = new_item(" ", curr_node->data);
-        // mvprintw((LINES - 2) + i, 2, "%s\n", curr_node->data);
     }
-    /* TODO: remove */
-    /* for(i = 0; i < n_choices; ++i) {
-        my_items[i] = new_item(" ", choices[i]);
-    } */
+    // terminate my_items array with null
+    my_items[i] = new_item((char *)NULL, curr_node->data);
 
 	/* Crate menu */
 	my_menu = new_menu((ITEM**) my_items);
@@ -144,7 +120,7 @@ int main(int argc, char* argv[]) {
 	/* Unpost and free all the memory taken up */
     unpost_menu(my_menu);
     free_menu(my_menu);
-    for(i = 0; i < n_choices; ++i) {
+    for(i = 0; i < songs_list_len; ++i) {
         free_item(my_items[i]);
     }
 	endwin();
