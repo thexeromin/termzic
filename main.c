@@ -161,6 +161,26 @@ int main(int argc, char* argv[]) {
 			case KEY_PPAGE:
 				menu_driver(my_menu, REQ_SCR_UPAGE);
 				break;
+			case 'r':   // resume song
+                if(currently_playing_song_index > -1) {
+                    if(ma_device_start(&device[currently_playing_song_index]) != MA_SUCCESS) {
+                        printf("Failed to start playback device.\n");
+                        ma_device_uninit(&device[currently_playing_song_index]);
+                        ma_decoder_uninit(&decoder[currently_playing_song_index]);
+                        return -4;
+                    }
+                }
+				break;
+			case 'p':   // pause song
+                if(currently_playing_song_index > -1) {
+                    if(ma_device_stop(&device[currently_playing_song_index]) != MA_SUCCESS) {
+                        printf("Failed to stop playback device.\n");
+                        ma_device_uninit(&device[currently_playing_song_index]);
+                        ma_decoder_uninit(&decoder[currently_playing_song_index]);
+                        return -4;
+                    }
+                }
+				break;
             case 10:  // Enter
                 move(LINES - 2, startx);
 				clrtoeol();
