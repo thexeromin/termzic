@@ -49,6 +49,7 @@ node_t* delete(node_t* head, char* data) {
     return NULL;
 }
 
+// TODO: remove this after testing
 // list_length: get length of linked list
 int list_length(node_t* head) {
     int length = 0;
