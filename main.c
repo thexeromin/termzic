@@ -11,8 +11,8 @@
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define CTRLD   4
-#define MAX_DECODERS 50
-#define MAX_AUDIO_FILES 50
+#define MAX_DECODERS 100
+#define MAX_AUDIO_FILES 100
 #define SUCCESS 0
 #define FAILURE 1
 
@@ -23,6 +23,8 @@ typedef struct  {
 
 // global variables
 static int current_song_index = -1;
+static ma_uint64 current_song_frame_index = 0;
+static ma_uint64 frames_to_skip = 5 * 48000;
 static bool is_audio_pause = false;
 AudioFile* files;
 ma_device device;
@@ -152,6 +154,20 @@ int main(int argc, char* argv[]) {
 			case KEY_PPAGE:
 				menu_driver(my_menu, REQ_SCR_UPAGE);
 				break;
+			case KEY_RIGHT: // skip 5 seconds
+                current_song_frame_index += frames_to_skip;
+                ma_decoder_seek_to_pcm_frame(
+                    &decoders[current_song_index],
+                    current_song_frame_index
+                );
+				break;
+			case KEY_LEFT: // revert 5 seconds
+                current_song_frame_index -= frames_to_skip;
+                ma_decoder_seek_to_pcm_frame(
+                    &decoders[current_song_index],
+                    current_song_frame_index
+                );
+				break;
 			case 'r':   // resume song
                 is_audio_pause = false;
 				break;
@@ -164,6 +180,7 @@ int main(int argc, char* argv[]) {
 
                 // change song
                 current_song_index = item_index(curr_item);
+                current_song_frame_index = 0;
                 ma_decoder_seek_to_pcm_frame(&decoders[current_song_index], 0);
 				break;
 		}
@@ -180,6 +197,7 @@ int main(int argc, char* argv[]) {
         ma_decoder_uninit(&decoders[i]);
     }
     free(my_items);
+    free(files);
 	endwin();
 }
 
@@ -264,6 +282,8 @@ void data_callback(
             frameCount,
             NULL
         );
+
+        current_song_frame_index += framesRead;
 
         if(framesRead > frameCount) {
             current_song_index++;
