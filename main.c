@@ -31,6 +31,7 @@ ma_device device;
 ma_decoder* decoders;
 
 // module functions
+bool is_mp3_file(char* filename);
 int fetch_audio_files(char* path);
 int init_device_and_decoder(int total_files);
 void data_callback(
@@ -201,6 +202,11 @@ int main(int argc, char* argv[]) {
 	endwin();
 }
 
+bool is_mp3_file(char* filename) {
+    char* dot = strrchr(filename, '.');
+    return dot && strcmp(dot, ".mp3") == 0;
+}
+
 // fetch_audio_files: fetch all files from dir and put in files array
 int fetch_audio_files(char* path) {
     DIR *d;
@@ -213,7 +219,11 @@ int fetch_audio_files(char* path) {
         while((dir = readdir(d)) != NULL) {
             if(i >= MAX_AUDIO_FILES) return i;
 
-            if (strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
+            if (
+                strcmp(dir->d_name, ".") != 0 &&
+                strcmp(dir->d_name, "..") != 0 &&
+                is_mp3_file(dir->d_name)
+            ) {
                 // create full path of a audio file
                 snprintf(buf, sizeof(buf), "%s%s", path, dir->d_name);
 
